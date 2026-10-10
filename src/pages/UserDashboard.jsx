@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 
 export default function UserDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('live'); // 'live', 'previous', 'results'
+  const [activeTab, setActiveTab] = useState('live'); 
   const [userPhone, setUserPhone] = useState('');
   const [profileName, setProfileName] = useState('');
-  const [hasProfile, setHasProfile] = useState(true); // default true, checked later
+  const [hasProfile, setHasProfile] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(true);
   
   const [examsList, setExamsList] = useState([]);
@@ -49,9 +49,10 @@ export default function UserDashboard() {
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/'); };
 
-  // টাইপ এবং ক্যাটাগরি অনুযায়ী ফিল্টার
-  const liveExams = examsList.filter(e => (e.exam_type === 'live' || !e.exam_type) && (selectedCategory === 'All' || e.category === selectedCategory));
-  const previousExams = examsList.filter(e => e.exam_type === 'previous' && (selectedCategory === 'All' || e.category === selectedCategory));
+  // সময় দিয়ে অটোমেটিক লাইভ এবং প্রিভিয়াস ফিল্টার করা হচ্ছে
+  const now = new Date().getTime();
+  const liveExams = examsList.filter(e => new Date(e.end_time).getTime() > now && (selectedCategory === 'All' || e.category === selectedCategory));
+  const previousExams = examsList.filter(e => new Date(e.end_time).getTime() <= now && (selectedCategory === 'All' || e.category === selectedCategory));
 
   if (loadingProfile) return <div className="min-h-screen flex items-center justify-center font-bold text-[#287A74] text-xl">Loading...</div>;
 
@@ -66,14 +67,12 @@ export default function UserDashboard() {
       </nav>
 
       <div className="flex-1 max-w-6xl w-full mx-auto p-8 mt-4">
-        {/* ৩টি ট্যাব */}
         <div className="flex flex-wrap gap-4 mb-8">
           <button onClick={() => setActiveTab('live')} className={`px-8 py-3 font-bold rounded-xl transition-all ${activeTab === 'live' ? 'bg-red-500 text-white shadow-lg' : 'bg-white text-gray-500 border'}`}>Live Exams</button>
           <button onClick={() => setActiveTab('previous')} className={`px-8 py-3 font-bold rounded-xl transition-all ${activeTab === 'previous' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-gray-500 border'}`}>Previous Exams</button>
           <button onClick={() => setActiveTab('results')} className={`px-8 py-3 font-bold rounded-xl transition-all ${activeTab === 'results' ? 'bg-[#55A9A0] text-white shadow-lg' : 'bg-white text-gray-500 border'}`}>My Results</button>
         </div>
 
-        {/* ক্যাটাগরি ফিল্টার */}
         {(activeTab === 'live' || activeTab === 'previous') && (
           <div className="flex flex-wrap gap-3 mb-8">
             <button onClick={() => setSelectedCategory('All')} className={`px-5 py-2 rounded-lg font-bold text-sm border ${selectedCategory === 'All' ? 'bg-[#287A74] text-white' : 'bg-white text-gray-600'}`}>All</button>
@@ -83,37 +82,62 @@ export default function UserDashboard() {
           </div>
         )}
 
-        {/* Live Exams List */}
         {activeTab === 'live' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {liveExams.map(exam => (
-              <div key={exam.id} className="bg-white p-6 rounded-3xl shadow-sm border border-red-100 hover:shadow-xl">
+              <div key={exam.id} className="bg-white p-6 rounded-3xl shadow-sm border border-red-100 hover:shadow-xl transition-all">
                 <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-sm font-bold mb-4 inline-block">LIVE EXAM</span>
                 <h3 className="text-xl font-black text-gray-800 mb-2">{exam.title}</h3>
-                <p className="text-gray-500 font-bold mb-4">Allowed Attempt: 1 Time</p>
-                <button onClick={() => navigate(`/take-exam/${exam.id}`)} className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-600 font-bold py-3 rounded-xl transition-colors">Start Exam</button>
+                <p className="text-gray-500 font-bold mb-4">Limit: 1 Attempt</p>
+                <p className="text-red-400 text-xs font-bold mb-4">Ends: {new Date(exam.end_time).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                <button onClick={() => navigate(`/take-exam/${exam.id}`)} className="w-full bg-red-50 hover:bg-red-500 hover:text-white text-red-600 font-bold py-3 rounded-xl transition-colors">Start Live Exam</button>
               </div>
             ))}
-            {liveExams.length === 0 && <p className="text-gray-500 font-bold col-span-3">No live exams right now.</p>}
+            {liveExams.length === 0 && <p className="text-gray-500 font-bold col-span-3">No live exams available right now.</p>}
           </div>
         )}
 
-        {/* Previous Exams List */}
         {activeTab === 'previous' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {previousExams.map(exam => (
-              <div key={exam.id} className="bg-white p-6 rounded-3xl shadow-sm border border-orange-100 hover:shadow-xl">
+              <div key={exam.id} className="bg-white p-6 rounded-3xl shadow-sm border border-orange-100 hover:shadow-xl transition-all">
                 <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-lg text-sm font-bold mb-4 inline-block">PREVIOUS / PRACTICE</span>
                 <h3 className="text-xl font-black text-gray-800 mb-2">{exam.title}</h3>
-                <p className="text-gray-500 font-bold mb-4">Allowed Attempts: 2 Times</p>
+                <p className="text-gray-500 font-bold mb-4">Limit: 2 Attempts</p>
                 <button onClick={() => navigate(`/take-exam/${exam.id}`)} className="w-full bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 font-bold py-3 rounded-xl transition-colors">Practice Now</button>
               </div>
             ))}
-            {previousExams.length === 0 && <p className="text-gray-500 font-bold col-span-3">No previous exams right now.</p>}
+            {previousExams.length === 0 && <p className="text-gray-500 font-bold col-span-3">No previous exams found.</p>}
           </div>
         )}
 
-        {/* Results (আগের মতোই থাকবে) */}
+        {activeTab === 'results' && (
+           <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden animate-fade-in">
+             <table className="w-full text-left">
+               <thead className="bg-[#AEEED3]/30">
+                 <tr>
+                   <th className="p-6 font-black text-[#287A74] uppercase text-sm">Exam Title</th>
+                   <th className="p-6 font-black text-[#287A74] uppercase text-sm">Score</th>
+                   <th className="p-6 font-black text-[#287A74] uppercase text-sm">Status</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-100">
+                 {myResults.map(res => {
+                   const isPass = res.score >= res.pass_mark; 
+                   return (
+                     <tr key={res.id} className="hover:bg-gray-50">
+                       <td className="p-6 font-bold text-gray-700">{res.exam_title}</td>
+                       <td className="p-6"><span className="font-black text-xl text-[#287A74]">{res.score}</span><span className="text-xs text-gray-400 font-bold ml-1">/{res.pass_mark}</span></td>
+                       <td className="p-6">
+                         <span className={`px-4 py-2 rounded-xl font-black text-sm shadow-sm ${isPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{isPass ? 'PASS' : 'FAIL'}</span>
+                       </td>
+                     </tr>
+                   )
+                 })}
+               </tbody>
+             </table>
+           </div>
+        )}
       </div>
     </div>
   );
