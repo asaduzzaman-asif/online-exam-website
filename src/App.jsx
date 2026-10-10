@@ -1,19 +1,19 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
-import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import TakeExam from './pages/TakeExam'; // <-- নতুন পেজ ইম্পোর্ট করা হলো
+import UserDashboard from './pages/UserDashboard';
+import TakeExam from './pages/TakeExam';
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        <Route path="/exam/:id" element={<TakeExam />} /> {/* <-- নতুন পেজের লিংক */}
+        <Route path="/user-dashboard" element={<UserDashboard />} />
+        <Route path="/take-exam/:id" element={<TakeExam />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 
