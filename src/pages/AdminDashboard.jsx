@@ -10,7 +10,7 @@ export default function AdminDashboard() {
   const [category, setCategory] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [passMark, setPassMark] = useState(''); // নতুন পাস মার্ক স্টেট
+  const [passMark, setPassMark] = useState(''); 
   const [loading, setLoading] = useState(false);
   
   const [examsList, setExamsList] = useState([]);
@@ -52,6 +52,7 @@ export default function AdminDashboard() {
     navigate('/'); 
   };
 
+  // ক্যাটাগরি অ্যাড এবং ডিলিট
   const handleAddCategory = async (e) => {
     e.preventDefault();
     if (!newCategory.trim()) return;
@@ -69,16 +70,12 @@ export default function AdminDashboard() {
     else fetchData();
   };
 
-  // পরীক্ষা তৈরির ফাংশন (পাস মার্ক সহ)
+  // এক্সাম তৈরি করা
   const handleCreateExam = async (e) => {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.from('exams').insert([{ 
-      title, 
-      category, 
-      start_time: startTime, 
-      end_time: endTime,
-      pass_mark: Number(passMark) // ডাটাবেসে পাস মার্ক সেভ হচ্ছে
+      title, category, start_time: startTime, end_time: endTime, pass_mark: Number(passMark)
     }]);
     
     if (error) alert("Error: " + error.message);
@@ -88,6 +85,25 @@ export default function AdminDashboard() {
       fetchData(); 
     }
     setLoading(false);
+  };
+
+  // এক্সাম ডিলিট করা (নতুন ফাংশন)
+  const handleDeleteExam = async (id) => {
+    if(!window.confirm("Are you sure you want to delete this exam? This will also permanently delete all questions and student results for this exam!")) return;
+    
+    // ডাটাবেস এরর এড়াতে প্রথমে এই এক্সামের সব প্রশ্ন এবং রেজাল্ট মুছে ফেলা হচ্ছে
+    await supabase.from('questions').delete().eq('exam_id', id);
+    await supabase.from('exam_attempts').delete().eq('exam_id', id);
+    
+    // এরপর মূল এক্সাম ডিলিট করা হচ্ছে
+    const { error } = await supabase.from('exams').delete().eq('id', id);
+    
+    if (error) {
+      alert("Error deleting exam: " + error.message);
+    } else {
+      alert("Exam and all related data deleted successfully!");
+      fetchData();
+    }
   };
 
   const handleAddQuestion = async (e) => {
@@ -163,6 +179,8 @@ export default function AdminDashboard() {
       </div>
 
       <div className="flex-1 p-10 overflow-y-auto bg-gray-50/50">
+        
+        {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-10">Overview Dashboard</h1>
@@ -179,6 +197,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Manage Categories Tab */}
         {activeTab === 'manage-categories' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Manage Categories</h1>
@@ -203,9 +222,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Manage Exams Tab */}
         {activeTab === 'manage-exams' && (
           <div className="animate-fade-in">
              <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Manage Exams</h1>
+             
+             {/* Exam Creation Form */}
              <div className="bg-white p-10 rounded-3xl shadow-lg border border-gray-100 mb-10 max-w-4xl">
               <h2 className="text-2xl font-bold text-[#55A9A0] mb-6">Create New Exam</h2>
               <form onSubmit={handleCreateExam} className="space-y-8">
@@ -223,7 +245,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 
-                {/* নতুন পাস মার্ক ও টাইম ইনপুট সেকশন */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
                     <label className="block mb-2 font-bold text-gray-600">Pass Mark</label>
@@ -238,10 +259,35 @@ export default function AdminDashboard() {
                 </button>
               </form>
             </div>
+
+            {/* List of Existing Exams with Delete Option */}
+            <h2 className="text-2xl font-extrabold text-gray-700 mb-6 px-2">Existing Exams</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+              {examsList.map(exam => (
+                <div key={exam.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative group hover:shadow-xl transition-all duration-300">
+                  <span className="bg-[#AEEED3]/50 text-[#287A74] px-3 py-1 rounded-lg text-sm font-bold mb-3 inline-block">{exam.category}</span>
+                  <h3 className="text-xl font-black text-gray-800 mb-2 truncate" title={exam.title}>{exam.title}</h3>
+                  <p className="text-gray-500 font-bold mb-1">Pass Mark: <span className="text-[#287A74]">{exam.pass_mark}</span></p>
+                  <p className="text-gray-400 text-xs font-medium mt-3 bg-gray-50 p-2 rounded-lg">
+                    Ends: {new Date(exam.end_time).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </p>
+                  
+                  {/* Delete Button (Hover to see) */}
+                  <button 
+                    onClick={() => handleDeleteExam(exam.id)} 
+                    className="absolute top-6 right-6 text-red-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-red-50 rounded-lg p-2"
+                    title="Delete Exam"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              ))}
+              {examsList.length === 0 && <p className="text-gray-500 font-bold col-span-3 ml-2">No exams created yet.</p>}
+            </div>
           </div>
         )}
 
-        {/* Add Questions Tab (আগের মতোই) */}
+        {/* Add Questions Tab */}
         {activeTab === 'add-questions' && (
           <div className="max-w-5xl animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Question Bank Setup</h1>
@@ -290,6 +336,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* View Results Tab */}
         {activeTab === 'view-results' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Performance Board</h1>
