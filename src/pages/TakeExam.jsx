@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import toast from 'react-hot-toast'; // Toast Import করা হলো
+import Swal from 'sweetalert2'; // সুন্দর অ্যালার্টের জন্য SweetAlert2 ইমপোর্ট
 
 export default function TakeExam() {
   const { id } = useParams(); 
@@ -89,17 +89,38 @@ export default function TakeExam() {
     return () => clearInterval(timer);
   }, [examStatus, timerTarget]);
 
+  // সময় শেষ হলে সুন্দর অ্যালার্ট দেখাবে
   useEffect(() => {
     if (examStatus === 'time_up') { 
-      toast.error("Time is up! Auto-submitting your exam."); 
-      handleSubmitExam(true); 
+      Swal.fire({
+        title: 'Time is Up!',
+        text: 'Your exam is being automatically submitted.',
+        icon: 'warning',
+        confirmButtonColor: '#287A74',
+        allowOutsideClick: false
+      }).then(() => {
+        handleSubmitExam(true);
+      });
     }
   }, [examStatus]);
 
   const handleOptionSelect = (qId, optKey) => setAnswers({ ...answers, [qId]: optKey });
 
   const handleSubmitExam = async (isAuto = false) => {
-    if (!isAuto && !window.confirm("Submit the exam?")) return;
+    // সাবমিট করার সময় কনফার্মেশন অ্যালার্ট
+    if (!isAuto) {
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: "Do you want to submit your answers?",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#287A74',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, Submit!'
+      });
+      if (!result.isConfirmed) return; // যদি স্টুডেন্ট Cancel এ ক্লিক করে তবে সাবমিট হবে না
+    }
+    
     setSubmitting(true);
     let score = 0;
     questions.forEach(q => { if (answers[q.id] === q.correct_answer) score += 1; });
@@ -107,11 +128,18 @@ export default function TakeExam() {
     const { error } = await supabase.from('exam_attempts').insert([{ user_phone: userPhone, exam_id: id, score: score }]);
     
     if (error) {
-      toast.error("Error submitting exam: " + error.message);
+      Swal.fire('Error!', error.message, 'error');
       setSubmitting(false);
     } else {
-      toast.success(`Exam submitted! You got ${score} marks.`);
-      navigate('/user-dashboard');
+      // সাকসেস হলে সুন্দর মেসেজ এবং সরাসরি Results ট্যাবে পাঠানো
+      await Swal.fire({
+        title: 'Exam Submitted!',
+        text: `You have successfully completed the exam. You got ${score} marks.`,
+        icon: 'success',
+        confirmButtonColor: '#287A74'
+      });
+      // এখানে `{ state: { tab: 'results' } }` পাঠানো হচ্ছে যা UserDashboard-এ রেজাল্ট ট্যাব ওপেন করবে
+      navigate('/user-dashboard', { state: { tab: 'results' } });
     }
   };
 

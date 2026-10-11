@@ -1,11 +1,14 @@
-import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // useLocation যোগ করা হয়েছে
 
 export default function UserDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('live'); 
+  const location = useLocation();
+  
+  // এক্সাম পেজ থেকে 'results' ট্যাগ আসলে সরাসরি সেই ট্যাব ওপেন হবে
+  const [activeTab, setActiveTab] = useState(location.state?.tab || 'live'); 
+  
   const [userPhone, setUserPhone] = useState('');
   const [profileName, setProfileName] = useState('');
   const [hasProfile, setHasProfile] = useState(true);
@@ -50,7 +53,6 @@ export default function UserDashboard() {
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/'); };
 
-  // সময় দিয়ে অটোমেটিক লাইভ এবং প্রিভিয়াস ফিল্টার করা হচ্ছে
   const now = new Date().getTime();
   const liveExams = examsList.filter(e => new Date(e.end_time).getTime() > now && (selectedCategory === 'All' || e.category === selectedCategory));
   const previousExams = examsList.filter(e => new Date(e.end_time).getTime() <= now && (selectedCategory === 'All' || e.category === selectedCategory));
