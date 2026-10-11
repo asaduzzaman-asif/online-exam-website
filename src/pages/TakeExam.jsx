@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import Swal from 'sweetalert2'; // সুন্দর অ্যালার্টের জন্য SweetAlert2 ইমপোর্ট
+import Swal from 'sweetalert2'; 
 
 export default function TakeExam() {
   const { id } = useParams(); 
@@ -89,7 +89,6 @@ export default function TakeExam() {
     return () => clearInterval(timer);
   }, [examStatus, timerTarget]);
 
-  // সময় শেষ হলে সুন্দর অ্যালার্ট দেখাবে
   useEffect(() => {
     if (examStatus === 'time_up') { 
       Swal.fire({
@@ -107,7 +106,6 @@ export default function TakeExam() {
   const handleOptionSelect = (qId, optKey) => setAnswers({ ...answers, [qId]: optKey });
 
   const handleSubmitExam = async (isAuto = false) => {
-    // সাবমিট করার সময় কনফার্মেশন অ্যালার্ট
     if (!isAuto) {
       const result = await Swal.fire({
         title: 'Are you sure?',
@@ -118,27 +116,31 @@ export default function TakeExam() {
         cancelButtonColor: '#d33',
         confirmButtonText: 'Yes, Submit!'
       });
-      if (!result.isConfirmed) return; // যদি স্টুডেন্ট Cancel এ ক্লিক করে তবে সাবমিট হবে না
+      if (!result.isConfirmed) return; 
     }
     
     setSubmitting(true);
     let score = 0;
     questions.forEach(q => { if (answers[q.id] === q.correct_answer) score += 1; });
     
-    const { error } = await supabase.from('exam_attempts').insert([{ user_phone: userPhone, exam_id: id, score: score }]);
+    // নতুন আপডেট: user_answers কলামে answers অবজেক্টটি সেভ করা হচ্ছে
+    const { error } = await supabase.from('exam_attempts').insert([{ 
+      user_phone: userPhone, 
+      exam_id: id, 
+      score: score,
+      user_answers: answers 
+    }]);
     
     if (error) {
       Swal.fire('Error!', error.message, 'error');
       setSubmitting(false);
     } else {
-      // সাকসেস হলে সুন্দর মেসেজ এবং সরাসরি Results ট্যাবে পাঠানো
       await Swal.fire({
         title: 'Exam Submitted!',
         text: `You have successfully completed the exam. You got ${score} marks.`,
         icon: 'success',
         confirmButtonColor: '#287A74'
       });
-      // এখানে `{ state: { tab: 'results' } }` পাঠানো হচ্ছে যা UserDashboard-এ রেজাল্ট ট্যাব ওপেন করবে
       navigate('/user-dashboard', { state: { tab: 'results' } });
     }
   };

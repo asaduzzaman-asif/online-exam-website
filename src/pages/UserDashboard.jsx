@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate, useLocation } from 'react-router-dom'; // useLocation যোগ করা হয়েছে
+import { useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function UserDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // এক্সাম পেজ থেকে 'results' ট্যাগ আসলে সরাসরি সেই ট্যাব ওপেন হবে
   const [activeTab, setActiveTab] = useState(location.state?.tab || 'live'); 
-  
   const [userPhone, setUserPhone] = useState('');
   const [profileName, setProfileName] = useState('');
   const [hasProfile, setHasProfile] = useState(true);
@@ -18,6 +17,10 @@ export default function UserDashboard() {
   const [myResults, setMyResults] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Review Modal State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewData, setReviewData] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -56,6 +59,24 @@ export default function UserDashboard() {
   const now = new Date().getTime();
   const liveExams = examsList.filter(e => new Date(e.end_time).getTime() > now && (selectedCategory === 'All' || e.category === selectedCategory));
   const previousExams = examsList.filter(e => new Date(e.end_time).getTime() <= now && (selectedCategory === 'All' || e.category === selectedCategory));
+
+  // Review Answer Function
+  const openReviewModal = async (result) => {
+    if (!result.user_answers) {
+      toast.error("Review is not available for older exams.");
+      return;
+    }
+    setReviewModalOpen(true);
+    setReviewData(null); // Loading state
+    
+    const { data: qData } = await supabase.from('questions').select('*').eq('exam_id', result.exam_id);
+    
+    setReviewData({
+      examTitle: result.exam_title,
+      questions: qData || [],
+      userAnswers: result.user_answers
+    });
+  };
 
   if (loadingProfile) return <div className="min-h-screen flex items-center justify-center font-bold text-[#287A74] text-xl">Loading...</div>;
 
@@ -122,6 +143,7 @@ export default function UserDashboard() {
                    <th className="p-6 font-black text-[#287A74] uppercase text-sm">Exam Title</th>
                    <th className="p-6 font-black text-[#287A74] uppercase text-sm">Score</th>
                    <th className="p-6 font-black text-[#287A74] uppercase text-sm">Status</th>
+                   <th className="p-6 font-black text-[#287A74] uppercase text-sm text-center">Action</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-gray-100">
@@ -134,6 +156,11 @@ export default function UserDashboard() {
                        <td className="p-6">
                          <span className={`px-4 py-2 rounded-xl font-black text-sm shadow-sm ${isPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{isPass ? 'PASS' : 'FAIL'}</span>
                        </td>
+                       <td className="p-6 text-center">
+                         <button onClick={() => openReviewModal(res)} className="px-4 py-2 bg-[#287A74] hover:bg-[#1f5c57] text-white text-sm font-bold rounded-lg transition-colors">
+                           Review Answers
+                         </button>
+                       </td>
                      </tr>
                    )
                  })}
@@ -142,6 +169,56 @@ export default function UserDashboard() {
            </div>
         )}
       </div>
+
+      {/* Review Modal UI */}
+      {reviewModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            <div className="flex justify-between items-center mb-6 sticky top-0 bg-white pt-2 pb-4 border-b border-gray-100 z-10">
+              <h2 className="text-2xl font-black text-[#287A74] truncate pr-4">Review: {reviewData?.examTitle}</h2>
+              <button onClick={() => setReviewModalOpen(false)} className="bg-red-50 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-lg font-bold transition-colors">Close</button>
+            </div>
+            
+            {!reviewData ? (
+              <div className="text-center font-bold text-gray-500 py-10">Loading questions...</div>
+            ) : (
+              <div className="space-y-6">
+                {reviewData.questions.map((q, i) => {
+                  const userAns = reviewData.userAnswers[q.id];
+                  const isCorrect = userAns === q.correct_answer;
+                  
+                  return (
+                    <div key={q.id} className={`p-6 rounded-2xl border-2 ${isCorrect ? 'bg-green-50/50 border-green-200' : 'bg-red-50/50 border-red-200'}`}>
+                      <h3 className="font-bold text-gray-800 text-lg mb-4">
+                        <span className={isCorrect ? 'text-green-600 mr-2' : 'text-red-500 mr-2'}>{i + 1}.</span> 
+                        {q.question_text}
+                      </h3>
+                      
+                      <div className="space-y-3 font-medium bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="flex items-start gap-2">
+                          <span className="text-gray-400 font-bold mt-0.5">Your Answer:</span>
+                          <span className={`${isCorrect ? 'text-green-600 font-bold' : 'text-red-500 font-bold line-through decoration-red-300'}`}>
+                            {userAns ? q.options[userAns] : 'Not answered'}
+                          </span>
+                        </p>
+                        
+                        {!isCorrect && (
+                          <p className="flex items-start gap-2">
+                            <span className="text-[#287A74] font-bold mt-0.5">Correct Answer:</span>
+                            <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded">
+                              {q.options[q.correct_answer]}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
