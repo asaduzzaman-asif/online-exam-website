@@ -38,20 +38,27 @@ export default function AdminDashboard() {
     // 2. Fetch Profiles (স্টুডেন্টদের নাম আনার জন্য)
     const { data: profilesData } = await supabase.from('profiles').select('*');
 
-    // 3. Fetch Results & Combine
+    // 3. Fetch Results & Combine (অ্যাডভান্সড স্পেস রিমুভাল সিস্টেম)
     const { data: attemptsData } = await supabase.from('exam_attempts').select('*').order('created_at', { ascending: false });
     
     if (attemptsData && examsData) {
       const combinedResults = attemptsData.map(attempt => {
         const examInfo = examsData.find(e => e.id === attempt.exam_id);
         
-        // String() দিয়ে কনভার্ট করে ম্যাচ করানো হচ্ছে যাতে ডাটাবেসের কোনো টাইপ মিস্টেক না হয়
-        const studentProfile = profilesData ? profilesData.find(p => String(p.phone) === String(attempt.user_phone)) : null;
+        let foundName = attempt.user_phone; // বাই-ডিফল্ট নাম্বার দেখাবে
+        
+        if (profilesData) {
+          // .trim() ব্যবহার করে কোনো অদৃশ্য স্পেস থাকলে তা ডিলিট করে ম্যাচ করানো হচ্ছে
+          const matchedProfile = profilesData.find(p => String(p.phone).trim() === String(attempt.user_phone).trim());
+          if (matchedProfile && matchedProfile.name) {
+            foundName = matchedProfile.name; // ম্যাচ হলে নাম রিপ্লেস করবে
+          }
+        }
         
         return { 
           ...attempt, 
           exam_title: examInfo ? examInfo.title : 'Deleted Exam',
-          student_name: studentProfile && studentProfile.name ? studentProfile.name : attempt.user_phone 
+          student_name: foundName 
         };
       });
       setResultsList(combinedResults);
@@ -342,6 +349,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* View Results Tab */}
         {activeTab === 'view-results' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Performance Board</h1>
@@ -357,7 +365,7 @@ export default function AdminDashboard() {
                 <tbody className="divide-y divide-gray-100">
                   {resultsList.map((res) => (
                     <tr key={res.id} className="hover:bg-[#AEEED3]/10 transition-colors">
-                      <td className="p-6 font-extrabold text-gray-800">{res.student_name || 'Unknown'}</td>
+                      <td className="p-6 font-extrabold text-gray-800">{res.student_name}</td>
                       <td className="p-6 text-[#55A9A0] font-bold">{res.exam_title}</td>
                       <td className="p-6 font-black text-[#287A74] text-xl">{res.score}</td>
                     </tr>
