@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import toast from 'react-hot-toast'; // Toast Import করা হলো
 
 export default function TakeExam() {
   const { id } = useParams(); 
@@ -36,11 +37,9 @@ export default function TakeExam() {
       const startTime = new Date(examData.start_time).getTime();
       const endTime = new Date(examData.end_time).getTime();
       
-      // লাইভ নাকি প্রিভিয়াস (প্র্যাকটিস) সেটা চেক করা হচ্ছে
       const isLive = now <= endTime;
       setIsPracticeMode(!isLive);
       
-      // লাইভ হলে লিমিট ১, প্রিভিয়াস হলে লিমিট ২
       const allowedAttempts = isLive ? 1 : 2;
       setMaxAllowed(allowedAttempts);
 
@@ -59,11 +58,9 @@ export default function TakeExam() {
       } else {
         setExamStatus('active');
         
-        // টাইমারের জন্য টার্গেট সময় সেট করা
         if (isLive) {
-          setTimerTarget(endTime); // লাইভ এক্সাম শেষ হওয়ার ফিক্সড সময়
+          setTimerTarget(endTime);
         } else {
-          // প্র্যাকটিস মোডের জন্য এক্সামের ডিউরেশন বের করে নতুন টাইমার শুরু হবে
           const durationInMs = endTime - startTime;
           setTimerTarget(now + durationInMs); 
         }
@@ -76,7 +73,6 @@ export default function TakeExam() {
     fetchExamData();
   }, [id, navigate]);
 
-  // লাইভ এবং প্র্যাকটিস কাউন্টডাউন টাইমার
   useEffect(() => {
     if (examStatus !== 'active' || !timerTarget) return;
     const timer = setInterval(() => {
@@ -94,7 +90,10 @@ export default function TakeExam() {
   }, [examStatus, timerTarget]);
 
   useEffect(() => {
-    if (examStatus === 'time_up') { alert("Time is up! Auto-submitting your exam."); handleSubmitExam(true); }
+    if (examStatus === 'time_up') { 
+      toast.error("Time is up! Auto-submitting your exam."); 
+      handleSubmitExam(true); 
+    }
   }, [examStatus]);
 
   const handleOptionSelect = (qId, optKey) => setAnswers({ ...answers, [qId]: optKey });
@@ -104,9 +103,16 @@ export default function TakeExam() {
     setSubmitting(true);
     let score = 0;
     questions.forEach(q => { if (answers[q.id] === q.correct_answer) score += 1; });
-    await supabase.from('exam_attempts').insert([{ user_phone: userPhone, exam_id: id, score: score }]);
-    alert(`Exam submitted! You got ${score} marks.`);
-    navigate('/user-dashboard');
+    
+    const { error } = await supabase.from('exam_attempts').insert([{ user_phone: userPhone, exam_id: id, score: score }]);
+    
+    if (error) {
+      toast.error("Error submitting exam: " + error.message);
+      setSubmitting(false);
+    } else {
+      toast.success(`Exam submitted! You got ${score} marks.`);
+      navigate('/user-dashboard');
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-[#287A74] text-xl">Loading...</div>;

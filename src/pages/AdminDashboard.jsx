@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import toast from 'react-hot-toast'; // Toast Import করা হলো
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -58,16 +59,16 @@ export default function AdminDashboard() {
     if (!newCategory.trim()) return;
     setLoading(true);
     const { error } = await supabase.from('categories').insert([{ name: newCategory.trim() }]);
-    if (error) alert("Error: " + error.message);
-    else { alert("Category Added Successfully!"); setNewCategory(''); fetchData(); }
+    if (error) toast.error("Error: " + error.message);
+    else { toast.success("Category Added Successfully!"); setNewCategory(''); fetchData(); }
     setLoading(false);
   };
 
   const handleDeleteCategory = async (id) => {
     if(!window.confirm("Are you sure you want to delete this category?")) return;
     const { error } = await supabase.from('categories').delete().eq('id', id);
-    if (error) alert("Error: " + error.message);
-    else fetchData();
+    if (error) toast.error("Error: " + error.message);
+    else { toast.success("Category deleted!"); fetchData(); }
   };
 
   const handleCreateExam = async (e) => {
@@ -77,9 +78,9 @@ export default function AdminDashboard() {
       title, category, start_time: startTime, end_time: endTime, pass_mark: Number(passMark), exam_type: examType 
     }]);
     
-    if (error) alert("Error: " + error.message);
+    if (error) toast.error("Error: " + error.message);
     else { 
-      alert("Exam Created Successfully!"); 
+      toast.success("Exam Created Successfully!"); 
       setTitle(''); setCategory(''); setStartTime(''); setEndTime(''); setPassMark(''); setExamType('live');
       fetchData(); 
     }
@@ -93,24 +94,24 @@ export default function AdminDashboard() {
     await supabase.from('exam_attempts').delete().eq('exam_id', id);
     const { error } = await supabase.from('exams').delete().eq('id', id);
     
-    if (error) alert("Error deleting exam: " + error.message);
-    else { alert("Exam and all related data deleted successfully!"); fetchData(); }
+    if (error) toast.error("Error deleting exam: " + error.message);
+    else { toast.success("Exam and all related data deleted successfully!"); fetchData(); }
   };
 
   const handleAddQuestion = async (e) => {
     e.preventDefault();
-    if (!selectedExamId) return alert("Select an exam first!");
+    if (!selectedExamId) return toast.error("Select an exam first!");
     setQuestionLoading(true);
     const optionsObj = { 1: option1, 2: option2, 3: option3, 4: option4 };
     const { error } = await supabase.from('questions').insert([{ exam_id: selectedExamId, question_text: questionText, options: optionsObj, correct_answer: correctAnswer }]);
-    if (error) alert("Error: " + error.message);
-    else { alert("Question Added!"); setQuestionText(''); setOption1(''); setOption2(''); setOption3(''); setOption4(''); setCorrectAnswer(''); }
+    if (error) toast.error("Error: " + error.message);
+    else { toast.success("Question Added!"); setQuestionText(''); setOption1(''); setOption2(''); setOption3(''); setOption4(''); setCorrectAnswer(''); }
     setQuestionLoading(false);
   };
 
   const handleCsvUpload = async (e) => {
     e.preventDefault();
-    if (!selectedExamId) return alert("Please select an exam first!");
+    if (!selectedExamId) return toast.error("Please select an exam first!");
     const file = e.target.csvFile.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -140,9 +141,9 @@ export default function AdminDashboard() {
         setUploadLoading(true);
         const { error } = await supabase.from('questions').insert(formattedQuestions);
         if (error) throw error;
-        alert(`Success! ${formattedQuestions.length} questions added from CSV.`);
+        toast.success(`Success! ${formattedQuestions.length} questions added from CSV.`);
         e.target.reset(); 
-      } catch (err) { alert("Upload Failed! Error: " + err.message); } 
+      } catch (err) { toast.error("Upload Failed! Error: " + err.message); } 
       finally { setUploadLoading(false); }
     };
     reader.readAsText(file); 
@@ -171,7 +172,6 @@ export default function AdminDashboard() {
 
       <div className="flex-1 p-10 overflow-y-auto bg-gray-50/50">
         
-        {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-10">Overview Dashboard</h1>
@@ -188,7 +188,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Manage Categories Tab */}
         {activeTab === 'manage-categories' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Manage Categories</h1>
@@ -213,7 +212,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Manage Exams Tab */}
         {activeTab === 'manage-exams' && (
           <div className="animate-fade-in">
              <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Manage Exams</h1>
@@ -277,7 +275,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Add Questions Tab */}
         {activeTab === 'add-questions' && (
           <div className="max-w-5xl animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Question Bank Setup</h1>
@@ -326,7 +323,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* View Results Tab */}
         {activeTab === 'view-results' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Performance Board</h1>
