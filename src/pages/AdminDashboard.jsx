@@ -40,15 +40,18 @@ export default function AdminDashboard() {
 
     // 3. Fetch Results & Combine
     const { data: attemptsData } = await supabase.from('exam_attempts').select('*').order('created_at', { ascending: false });
+    
     if (attemptsData && examsData) {
       const combinedResults = attemptsData.map(attempt => {
         const examInfo = examsData.find(e => e.id === attempt.exam_id);
-        const studentProfile = profilesData ? profilesData.find(p => p.phone === attempt.user_phone) : null;
+        
+        // String() দিয়ে কনভার্ট করে ম্যাচ করানো হচ্ছে যাতে ডাটাবেসের কোনো টাইপ মিস্টেক না হয়
+        const studentProfile = profilesData ? profilesData.find(p => String(p.phone) === String(attempt.user_phone)) : null;
         
         return { 
           ...attempt, 
           exam_title: examInfo ? examInfo.title : 'Deleted Exam',
-          student_name: studentProfile ? studentProfile.name : attempt.user_phone // নাম না পেলে নাম্বার দেখাবে
+          student_name: studentProfile && studentProfile.name ? studentProfile.name : attempt.user_phone 
         };
       });
       setResultsList(combinedResults);
@@ -339,7 +342,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* View Results Tab - Updated to show Name instead of Number */}
         {activeTab === 'view-results' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Performance Board</h1>
@@ -347,7 +349,6 @@ export default function AdminDashboard() {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-[#AEEED3]/50">
                   <tr>
-                    {/* Student ID এর জায়গায় Student Name দেওয়া হলো */}
                     <th className="p-6 font-black text-[#287A74] uppercase text-sm">Student Name</th>
                     <th className="p-6 font-black text-[#287A74] uppercase text-sm">Exam Title</th>
                     <th className="p-6 font-black text-[#287A74] uppercase text-sm">Score</th>
@@ -356,7 +357,6 @@ export default function AdminDashboard() {
                 <tbody className="divide-y divide-gray-100">
                   {resultsList.map((res) => (
                     <tr key={res.id} className="hover:bg-[#AEEED3]/10 transition-colors">
-                      {/* res.user_phone এর বদলে res.student_name রেন্ডার করা হচ্ছে */}
                       <td className="p-6 font-extrabold text-gray-800">{res.student_name || 'Unknown'}</td>
                       <td className="p-6 text-[#55A9A0] font-bold">{res.exam_title}</td>
                       <td className="p-6 font-black text-[#287A74] text-xl">{res.score}</td>
