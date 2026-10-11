@@ -31,18 +31,30 @@ export default function AdminDashboard() {
   const [uploadLoading, setUploadLoading] = useState(false);
 
   const fetchData = async () => {
+    // 1. Fetch Exams
     const { data: examsData } = await supabase.from('exams').select('*').order('created_at', { ascending: false });
     if (examsData) setExamsList(examsData);
 
+    // 2. Fetch Profiles (স্টুডেন্টদের নাম আনার জন্য)
+    const { data: profilesData } = await supabase.from('profiles').select('*');
+
+    // 3. Fetch Results & Combine
     const { data: attemptsData } = await supabase.from('exam_attempts').select('*').order('created_at', { ascending: false });
     if (attemptsData && examsData) {
       const combinedResults = attemptsData.map(attempt => {
         const examInfo = examsData.find(e => e.id === attempt.exam_id);
-        return { ...attempt, exam_title: examInfo ? examInfo.title : 'Deleted Exam' };
+        const studentProfile = profilesData ? profilesData.find(p => p.phone === attempt.user_phone) : null;
+        
+        return { 
+          ...attempt, 
+          exam_title: examInfo ? examInfo.title : 'Deleted Exam',
+          student_name: studentProfile ? studentProfile.name : attempt.user_phone // নাম না পেলে নাম্বার দেখাবে
+        };
       });
       setResultsList(combinedResults);
     }
 
+    // 4. Fetch Categories
     const { data: catsData } = await supabase.from('categories').select('*').order('created_at', { ascending: false });
     if (catsData) setCategoriesList(catsData);
   };
@@ -75,17 +87,11 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
 
-    // Timezone Fix: আপনার দেওয়া লোকাল টাইমকে গ্লোবাল ফরম্যাটে কনভার্ট করা হচ্ছে
     const utcStartTime = new Date(startTime).toISOString();
     const utcEndTime = new Date(endTime).toISOString();
 
     const { error } = await supabase.from('exams').insert([{ 
-      title, 
-      category, 
-      start_time: utcStartTime, 
-      end_time: utcEndTime, 
-      pass_mark: Number(passMark), 
-      exam_type: examType 
+      title, category, start_time: utcStartTime, end_time: utcEndTime, pass_mark: Number(passMark), exam_type: examType 
     }]);
     
     if (error) toast.error("Error: " + error.message);
@@ -333,6 +339,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* View Results Tab - Updated to show Name instead of Number */}
         {activeTab === 'view-results' && (
           <div className="animate-fade-in">
             <h1 className="text-4xl font-extrabold text-[#287A74] mb-8">Performance Board</h1>
@@ -340,7 +347,8 @@ export default function AdminDashboard() {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-[#AEEED3]/50">
                   <tr>
-                    <th className="p-6 font-black text-[#287A74] uppercase text-sm">Student ID</th>
+                    {/* Student ID এর জায়গায় Student Name দেওয়া হলো */}
+                    <th className="p-6 font-black text-[#287A74] uppercase text-sm">Student Name</th>
                     <th className="p-6 font-black text-[#287A74] uppercase text-sm">Exam Title</th>
                     <th className="p-6 font-black text-[#287A74] uppercase text-sm">Score</th>
                   </tr>
@@ -348,7 +356,8 @@ export default function AdminDashboard() {
                 <tbody className="divide-y divide-gray-100">
                   {resultsList.map((res) => (
                     <tr key={res.id} className="hover:bg-[#AEEED3]/10 transition-colors">
-                      <td className="p-6 font-extrabold text-gray-800">{res.user_phone || 'Unknown'}</td>
+                      {/* res.user_phone এর বদলে res.student_name রেন্ডার করা হচ্ছে */}
+                      <td className="p-6 font-extrabold text-gray-800">{res.student_name || 'Unknown'}</td>
                       <td className="p-6 text-[#55A9A0] font-bold">{res.exam_title}</td>
                       <td className="p-6 font-black text-[#287A74] text-xl">{res.score}</td>
                     </tr>
