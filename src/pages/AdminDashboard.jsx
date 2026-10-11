@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import toast from 'react-hot-toast'; // Toast Import করা হলো
+import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -74,8 +74,18 @@ export default function AdminDashboard() {
   const handleCreateExam = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    // Timezone Fix: আপনার দেওয়া লোকাল টাইমকে গ্লোবাল ফরম্যাটে কনভার্ট করা হচ্ছে
+    const utcStartTime = new Date(startTime).toISOString();
+    const utcEndTime = new Date(endTime).toISOString();
+
     const { error } = await supabase.from('exams').insert([{ 
-      title, category, start_time: startTime, end_time: endTime, pass_mark: Number(passMark), exam_type: examType 
+      title, 
+      category, 
+      start_time: utcStartTime, 
+      end_time: utcEndTime, 
+      pass_mark: Number(passMark), 
+      exam_type: examType 
     }]);
     
     if (error) toast.error("Error: " + error.message);
