@@ -170,9 +170,9 @@ export default function UserDashboard() {
         )}
       </div>
 
-      {/* Review Modal UI */}
+      {/* Review Modal UI (৪টি অপশন দিয়ে নতুন ডিজাইন) */}
       {reviewModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
             <div className="flex justify-between items-center mb-6 sticky top-0 bg-white pt-2 pb-4 border-b border-gray-100 z-10">
               <h2 className="text-2xl font-black text-[#287A74] truncate pr-4">Review: {reviewData?.examTitle}</h2>
@@ -182,34 +182,55 @@ export default function UserDashboard() {
             {!reviewData ? (
               <div className="text-center font-bold text-gray-500 py-10">Loading questions...</div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
+                {/* কালার কি (Legend) */}
+                <div className="flex gap-4 bg-gray-50 p-4 rounded-xl text-xs font-bold border border-gray-100">
+                  <div className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-green-500"></span> Correct Answer</div>
+                  <div className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-red-500"></span> Your Wrong Answer</div>
+                </div>
+
                 {reviewData.questions.map((q, i) => {
                   const userAns = reviewData.userAnswers[q.id];
-                  const isCorrect = userAns === q.correct_answer;
                   
                   return (
-                    <div key={q.id} className={`p-6 rounded-2xl border-2 ${isCorrect ? 'bg-green-50/50 border-green-200' : 'bg-red-50/50 border-red-200'}`}>
-                      <h3 className="font-bold text-gray-800 text-lg mb-4">
-                        <span className={isCorrect ? 'text-green-600 mr-2' : 'text-red-500 mr-2'}>{i + 1}.</span> 
+                    <div key={q.id} className="p-6 rounded-2xl border-2 border-gray-100 bg-white shadow-sm">
+                      <h3 className="font-extrabold text-gray-800 text-lg mb-5 flex items-start gap-2">
+                        <span className="text-[#287A74] bg-[#AEEED3]/30 px-2 py-0.5 rounded text-sm">{i + 1}</span> 
                         {q.question_text}
                       </h3>
                       
-                      <div className="space-y-3 font-medium bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <p className="flex items-start gap-2">
-                          <span className="text-gray-400 font-bold mt-0.5">Your Answer:</span>
-                          <span className={`${isCorrect ? 'text-green-600 font-bold' : 'text-red-500 font-bold line-through decoration-red-300'}`}>
-                            {userAns ? q.options[userAns] : 'Not answered'}
-                          </span>
-                        </p>
-                        
-                        {!isCorrect && (
-                          <p className="flex items-start gap-2">
-                            <span className="text-[#287A74] font-bold mt-0.5">Correct Answer:</span>
-                            <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded">
-                              {q.options[q.correct_answer]}
-                            </span>
-                          </p>
-                        )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(q.options).map(([key, val]) => {
+                          const isCorrect = key === q.correct_answer;
+                          const isUserSelected = userAns === key;
+                          
+                          let bgStyle = "border-gray-100 bg-white text-gray-600"; // ডিফল্ট অপশন
+                          let badgeText = "";
+                          
+                          if (isCorrect) {
+                            bgStyle = "border-green-500 bg-green-50 text-green-800 font-bold shadow-sm";
+                            badgeText = "✔ Correct Answer";
+                          } else if (isUserSelected && !isCorrect) {
+                            bgStyle = "border-red-400 bg-red-50 text-red-800 font-bold shadow-sm";
+                            badgeText = "✖ Your Answer";
+                          }
+                          
+                          return (
+                            <div key={key} className={`p-4 rounded-xl border-2 flex items-center justify-between gap-3 text-sm transition-all ${bgStyle}`}>
+                              <div className="flex items-center gap-3">
+                                <span className={`font-black px-2 py-1 rounded text-xs ${isCorrect ? 'bg-green-200 text-green-800' : isUserSelected ? 'bg-red-200 text-red-800' : 'bg-gray-100 text-gray-400'}`}>
+                                  {['A', 'B', 'C', 'D'][key - 1]}
+                                </span>
+                                <span>{val}</span>
+                              </div>
+                              {badgeText && (
+                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wide shrink-0 ${isCorrect ? 'bg-green-600/10 text-green-700' : 'bg-red-600/10 text-red-700'}`}>
+                                  {badgeText}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )
